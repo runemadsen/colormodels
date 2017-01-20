@@ -1,4 +1,73 @@
-function HSVColor(h, s, v) {
+var scene = new THREE.Scene();
+var geometry = new THREE.Geometry();
+var renderer = new THREE.WebGLRenderer();
+var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000);
+var theMesh;
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+var Vec2 = THREE.Vector2;
+var Vec3 = THREE.Vector3;
+
+var color = {
+  hue: 0,
+  saturation: 50,
+  brightness: 70,
+  hueChange: 0
+}
+
+var circle = {
+  start: 70,
+  end: 360,
+  resolution: 1,
+}
+
+// cache sin and cos value for reuse
+var xs = [];
+var ys = [];
+for(var i = 0; i < 361; i++) {
+  xs[i] = Math.cos(radians(i))
+  ys[i] = Math.sin(radians(i))
+}
+
+// Helpers
+// ---------------------------------------------
+
+// Converts RGB to HSV expecting values 0-1
+function RGBtoHSV(r, g, b) {
+  var rr, gg, bb,
+    h, s,
+    v = Math.max(r, g, b),
+    diff = v - Math.min(r, g, b),
+    diffc = function(c){
+        return (v - c) / 6 / diff + 1 / 2;
+    };
+
+  if (diff == 0) {
+      h = s = 0;
+  } else {
+      s = diff / v;
+      rr = diffc(r);
+      gg = diffc(g);
+      bb = diffc(b);
+
+      if (r === v) {
+          h = bb - gg;
+      }else if (g === v) {
+          h = (1 / 3) + rr - bb;
+      }else if (b === v) {
+          h = (2 / 3) + gg - rr;
+      }
+      if (h < 0) {
+          h += 1;
+      }else if (h > 1) {
+          h -= 1;
+      }
+  }
+  return [h, s, v];
+}
+
+function HSVtoRGB(h, s, v) {
   var r, g, b, i, f, p, q, t;
   i = Math.floor(h * 6);
   f = h * 6 - i;
@@ -13,7 +82,7 @@ function HSVColor(h, s, v) {
       case 4: r = t, g = p, b = v; break;
       case 5: r = v, g = p, b = q; break;
   }
-  return new THREE.Color(r, g, b);
+  return [r, g, b];
 }
 
 function degrees(angle) {
@@ -24,117 +93,132 @@ function radians(angle) {
   return angle * (Math.PI / 180);
 }
 
-var scene = new THREE.Scene();
-var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000);
-camera.position.z = 300;
-camera.position.y = 50;
-
-var renderer = new THREE.WebGLRenderer();
-renderer.setSize( window.innerWidth, window.innerHeight );
-document.body.appendChild( renderer.domElement );
-
-var light = new THREE.AmbientLight(0xFFFFFF)
-scene.add(light);
-
-var material = new THREE.MeshBasicMaterial({ vertexColors: THREE.VertexColors });
-var geometry = new THREE.Geometry();
-
-var color = {
-  hue: 0,
-  saturation: 50,
-  brightness: 70
-}
-
-var circle = {
-  slice: 100,
-  resolution: 10
-}
-
-// Make the color circle
-for(var angle = color.hue; angle < color.hue + 360 - circle.slice; angle += circle.resolution) {
-  var x1 = Math.cos(radians(angle)) * 100;
-  var y1 = Math.sin(radians(angle)) * 100;
-  var x2 = Math.cos(radians(angle + circle.resolution)) * 100;
-  var y2 = Math.sin(radians(angle + circle.resolution)) * 100;
-  geometry.vertices.push( new THREE.Vector3(0, 0, 100));
-  geometry.vertices.push( new THREE.Vector3(x1, y1, 100));
-  geometry.vertices.push( new THREE.Vector3(x2, y2, 100));
-}
-
-// Hue wall
-for(var i = 0; i < 100; i += circle.resolution) {
+function makePlane(x1, y1, x2, y2, flip) {
   for(var j = 0; j < 100; j += circle.resolution) {
-
-    var leftX = Math.cos(radians(color.hue)) * j;
-    var leftY = Math.sin(radians(color.hue)) * j;
-    var rightX = Math.cos(radians(color.hue)) * (j + circle.resolution);
-    var rightY = Math.sin(radians(color.hue)) * (j + circle.resolution);
-
-    geometry.vertices.push( new THREE.Vector3(leftX, leftY, i + circle.resolution));
-    geometry.vertices.push( new THREE.Vector3(rightX, rightY, i));
-    geometry.vertices.push( new THREE.Vector3(rightX, rightY, i + circle.resolution));
-
-    geometry.vertices.push( new THREE.Vector3(leftX, leftY, i + circle.resolution));
-    geometry.vertices.push( new THREE.Vector3(leftX, leftY, i));
-    geometry.vertices.push( new THREE.Vector3(rightX, rightY, i));
+    geometry.vertices.push(
+      new Vec3(x1, y1, j),
+      flip ? new Vec3(x2, y2, j + circle.resolution) : new Vec3(x2, y2, j),
+      flip ? new Vec3(x2, y2, j) : new Vec3(x2, y2, j + circle.resolution)
+    );
+    geometry.vertices.push(
+      new Vec3(x2, y2, j + circle.resolution),
+      flip ? new Vec3(x1, y1, j) : new Vec3(x1, y1, j + circle.resolution),
+      flip ? new Vec3(x1, y1, j + circle.resolution) : new Vec3(x1, y1, j)
+    );
   }
 }
 
-// opposite hue wall
-for(var i = 0; i < 100; i += circle.resolution) {
-  for(var j = 0; j < 100; j += circle.resolution) {
+// Init Scene
+// ---------------------------------------------
 
-    var leftX = Math.cos(radians(color.hue - circle.slice)) * j;
-    var leftY = Math.sin(radians(color.hue - circle.slice)) * j;
-    var rightX = Math.cos(radians(color.hue - circle.slice)) * (j + circle.resolution);
-    var rightY = Math.sin(radians(color.hue - circle.slice)) * (j + circle.resolution);
+function initScene() {
 
-    geometry.vertices.push( new THREE.Vector3(leftX, leftY, i + circle.resolution));
-    geometry.vertices.push( new THREE.Vector3(rightX, rightY, i + circle.resolution));
-    geometry.vertices.push( new THREE.Vector3(rightX, rightY, i));
+  scene.background = new THREE.Color(0x111111);
+  camera.position.z = 300;
+  camera.position.y = 50;
 
-    geometry.vertices.push( new THREE.Vector3(leftX, leftY, i + circle.resolution));
-    geometry.vertices.push( new THREE.Vector3(rightX, rightY, i));
-    geometry.vertices.push( new THREE.Vector3(leftX, leftY, i));
+  var light = new THREE.AmbientLight(0xFFFFFF)
+  scene.add(light);
+
+  var material = new THREE.MeshBasicMaterial({ vertexColors: THREE.VertexColors });
+
+  var a1, a2, x1, y1, x2, y2;
+  for(var i = circle.start; i < circle.end; i += circle.resolution) {
+
+    a1 = i % 360;
+    a2 = (i + circle.resolution) % 360;
+    x1 = xs[a1] * 100;
+    y1 = ys[a1] * 100;
+    x2 = xs[a2] * 100;
+    y2 = ys[a2] * 100;
+
+    // circle slice
+    geometry.vertices.push(new Vec3(0, 0, 100), new Vec3(x1, y1, 100), new Vec3(x2, y2, 100))
+
+    // slice plan down z axis
+    makePlane(x1, y1, x2, y2)
+  }
+
+  for(var i = 0; i < 100; i += circle.resolution) {
+    // Start plane
+    makePlane(
+      xs[circle.start] * i,
+      ys[circle.start] * i,
+      xs[circle.start] * (i + circle.resolution),
+      ys[circle.start] * (i + circle.resolution)
+    )
+    // End plane
+    makePlane(
+      xs[circle.end] * i,
+      ys[circle.end] * i,
+      xs[circle.end] * (i + circle.resolution),
+      ys[circle.end] * (i + circle.resolution),
+      true
+    )
+  }
+
+  // make faces
+  for(var i = 0; i < geometry.vertices.length - 2; i += 3) {
+    var face = new THREE.Face3(i, i+1, i+2);
+    face.vertexColors = [new THREE.Color(0xFF0000), new THREE.Color(0xFF0000), new THREE.Color(0xFF0000)]
+    geometry.faces.push(face);
+  }
+  updateScene(color)
+
+  geometry.computeFaceNormals();
+  geometry.computeVertexNormals();
+
+  theMesh = new THREE.Mesh( geometry, material )
+  theMesh.rotation.x = 5.26;
+  theMesh.rotation.z = 4.04;
+  scene.add(theMesh);
+}
+
+// Update Scene
+// ---------------------------------------------
+
+function updateColors(color) {
+  var facevars = ['a', 'b', 'c']
+  for(var i = 0; i < geometry.faces.length; i++) {
+    for(var j = 0; j < 3; j++) {
+      var vec = geometry.vertices[geometry.faces[i][facevars[j]]];
+      var rgb = HSVtoRGB(
+        (360 - degrees(Math.atan2(vec.y, vec.x)) + color.hue + circle.start) / 360,
+        Math.sqrt(vec.x * vec.x + vec.y * vec.y) / 100,
+        vec.z / 100
+      )
+      geometry.faces[i].vertexColors[j].setRGB(rgb[0], rgb[1], rgb[2])
+    }
+  }
+  geometry.colorsNeedUpdate = true;
+}
+
+function updateScene(color) {
+  if(color.hueChanged) {
+    updateColors(color);
+    color.hueChanged = false;
   }
 }
 
-// Make faces and color them from position within 3D space
-for(var i = 0; i < geometry.vertices.length - 2; i += 3) {
-  var cols = [];
-  for(var j = i; j < i+3; j++) {
-    var vec = geometry.vertices[j];
-    var hue = 360 - degrees(Math.atan2(vec.y, vec.x)); // this somehow works
-    var sat = Math.sqrt(vec.x * vec.x + vec.y * vec.y); // saturation is length of vector
-    var bri = vec.z;
-    cols.push(HSVColor(hue / 360, sat / 100, bri / 100))
-  }
-  var face = new THREE.Face3(i, i+1, i+2);
-  face.vertexColors = cols;
-  geometry.faces.push(face);
+function changeColor(h, s, v) {
+  color.hueChanged = h != color.hue;
+  color.hue = h;
+  color.saturation = s;
+  color.brightness = v;
 }
 
-geometry.computeFaceNormals();
-geometry.computeVertexNormals();
+// Go baby go
+// ---------------------------------------------
 
-theMesh = new THREE.Mesh( geometry, material )
-scene.add(theMesh);
-
-// render loop
 var render = function () {
-  requestAnimationFrame( render );
+  requestAnimationFrame(render);
+  updateScene(color)
   renderer.render(scene, camera);
 };
 
-// Rotate the mesh based on mouse position
 document.body.onmousemove = function(e){
-	theMesh.rotation.z = e.pageX / 100;
-	theMesh.rotation.x = e.pageY / 100;
+  changeColor(e.pageX % 360, 100, 100);
 }
 
-// Click to toggle wireframe mode
-document.body.onclick = function(e){
-	theMesh.material.wireframe = !theMesh.material.wireframe;
-}
-
-render(); // initiate render loop
+initScene();
+render();
