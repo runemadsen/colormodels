@@ -6,6 +6,10 @@ var theMesh;
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+var stats = new Stats();
+stats.showPanel( 1 ); // 0: fps, 1: ms, 2: mb, 3+: custom
+document.body.appendChild( stats.dom );
+
 var Vec2 = THREE.Vector2;
 var Vec3 = THREE.Vector3;
 
@@ -17,9 +21,9 @@ var color = {
 }
 
 var circle = {
-  start: 70,
+  start: 100,
   end: 360,
-  resolution: 1,
+  resolution: 5,
 }
 
 // cache sin and cos value for reuse
@@ -32,40 +36,6 @@ for(var i = 0; i < 361; i++) {
 
 // Helpers
 // ---------------------------------------------
-
-// Converts RGB to HSV expecting values 0-1
-function RGBtoHSV(r, g, b) {
-  var rr, gg, bb,
-    h, s,
-    v = Math.max(r, g, b),
-    diff = v - Math.min(r, g, b),
-    diffc = function(c){
-        return (v - c) / 6 / diff + 1 / 2;
-    };
-
-  if (diff == 0) {
-      h = s = 0;
-  } else {
-      s = diff / v;
-      rr = diffc(r);
-      gg = diffc(g);
-      bb = diffc(b);
-
-      if (r === v) {
-          h = bb - gg;
-      }else if (g === v) {
-          h = (1 / 3) + rr - bb;
-      }else if (b === v) {
-          h = (2 / 3) + gg - rr;
-      }
-      if (h < 0) {
-          h += 1;
-      }else if (h > 1) {
-          h -= 1;
-      }
-  }
-  return [h, s, v];
-}
 
 function HSVtoRGB(h, s, v) {
   var r, g, b, i, f, p, q, t;
@@ -169,8 +139,8 @@ function initScene() {
   geometry.computeVertexNormals();
 
   theMesh = new THREE.Mesh( geometry, material )
-  theMesh.rotation.x = 5.26;
-  theMesh.rotation.z = 4.04;
+  theMesh.rotation.x = 5.2;
+  theMesh.rotation.z = 10.77;
   scene.add(theMesh);
 }
 
@@ -211,13 +181,18 @@ function changeColor(h, s, v) {
 // ---------------------------------------------
 
 var render = function () {
+  stats.begin();
   requestAnimationFrame(render);
   updateScene(color)
   renderer.render(scene, camera);
+  stats.end();
 };
 
 document.body.onmousemove = function(e){
   changeColor(e.pageX % 360, 100, 100);
+  // theMesh.rotation.z = e.pageX / 100;
+	// theMesh.rotation.x = e.pageY / 100;
+  // console.log(theMesh.rotation)
 }
 
 initScene();
