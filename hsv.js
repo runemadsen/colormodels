@@ -27,7 +27,7 @@ var color = {
 var circle = {
   start: 110,
   end: 360,
-  resolution: 5,
+  resolution: 4,
 }
 
 // cache sin and cos value for reuse
@@ -127,6 +127,7 @@ function initScene() {
       Vec3WithCol(x1, y1, -100, a1, 100)
     )
 
+
     makeZPlane(x2, y2, a2, 100, x1, y1, a1, 100)
   }
 
@@ -211,6 +212,7 @@ function updateScene(color) {
         h = (vec.h + color.hue) / 360;
         s = vec.s / 100;
         b = Math.abs(vec.z) / 100;
+
         if(hsl) {
           model.faces[i].vertexColors[j].setHSL(h, s, b);
         }
