@@ -6,31 +6,17 @@
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<style>
 			body {
-				color: #eee;
-				font-family:Monospace;
-				font-size:13px;
-				text-align:center;
-
-				background-color: #000;
 				margin: 0px;
 				padding: 0px;
-				overflow: hidden;
 			}
-
-			#info {
-				position: absolute;
-				top: 0px; width: 100%;
-				padding: 5px;
-			}
-
-			a {
-				color: #0080ff;
-			}
-
 		</style>
 	</head>
 	<body>
 		<div id="container"></div>
+		<br />
+		<input type="range" name="hue" min="0" max="360" value="0" />
+		<input type="range" name="saturation" min="0" max="100" value="50" />
+		<input type="range" name="brightness" min="0" max="100" value="70" />
 		<script src="three.js"></script>
 		<script src="stats.js"></script>
 		<script src="hsv.js"></script>

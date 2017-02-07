@@ -1,10 +1,11 @@
 var scene = new THREE.Scene();
-var geometry = new THREE.Geometry();
-var renderer = new THREE.WebGLRenderer();
-var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000);
-var theMesh;
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+var model = new THREE.Geometry();
+var sphere = new THREE.SphereGeometry(5, 32, 32);
+var renderer = new THREE.WebGLRenderer({ antialias: true });
+var camera = new THREE.PerspectiveCamera(38, 600/400, 0.1, 1000);
+var modelMesh, sphereMesh;
+renderer.setSize(600, 400);
+document.getElementById('container').appendChild(renderer.domElement);
 
 var stats = new Stats();
 stats.showPanel( 1 ); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -17,7 +18,7 @@ var color = {
   hue: 0,
   saturation: 50,
   brightness: 70,
-  hueChange: 0
+  hueChanged: true
 }
 
 var circle = {
@@ -65,12 +66,12 @@ function radians(angle) {
 
 function makePlane(x1, y1, x2, y2, flip) {
   for(var j = 0; j < 100; j += circle.resolution) {
-    geometry.vertices.push(
+    model.vertices.push(
       new Vec3(x1, y1, j),
       flip ? new Vec3(x2, y2, j + circle.resolution) : new Vec3(x2, y2, j),
       flip ? new Vec3(x2, y2, j) : new Vec3(x2, y2, j + circle.resolution)
     );
-    geometry.vertices.push(
+    model.vertices.push(
       new Vec3(x2, y2, j + circle.resolution),
       flip ? new Vec3(x1, y1, j) : new Vec3(x1, y1, j + circle.resolution),
       flip ? new Vec3(x1, y1, j + circle.resolution) : new Vec3(x1, y1, j)
@@ -83,9 +84,13 @@ function makePlane(x1, y1, x2, y2, flip) {
 
 function initScene() {
 
-  scene.background = new THREE.Color(0x111111);
-  camera.position.z = 300;
-  camera.position.y = 50;
+  var group = new THREE.Object3D();
+  group.rotation.x = 5.22;
+  group.rotation.z = 10.52;
+
+  scene.background = new THREE.Color(0x222222);
+  camera.position.z = 330;
+  camera.position.y = 30;
 
   var light = new THREE.AmbientLight(0xFFFFFF)
   scene.add(light);
@@ -103,7 +108,7 @@ function initScene() {
     y2 = ys[a2] * 100;
 
     // circle slice
-    geometry.vertices.push(new Vec3(0, 0, 100), new Vec3(x1, y1, 100), new Vec3(x2, y2, 100))
+    model.vertices.push(new Vec3(0, 0, 100), new Vec3(x1, y1, 100), new Vec3(x2, y2, 100))
 
     // slice plan down z axis
     makePlane(x1, y1, x2, y2)
@@ -128,53 +133,56 @@ function initScene() {
   }
 
   // make faces
-  for(var i = 0; i < geometry.vertices.length - 2; i += 3) {
+  for(var i = 0; i < model.vertices.length - 2; i += 3) {
     var face = new THREE.Face3(i, i+1, i+2);
     face.vertexColors = [new THREE.Color(0xFF0000), new THREE.Color(0xFF0000), new THREE.Color(0xFF0000)]
-    geometry.faces.push(face);
+    model.faces.push(face);
   }
+
+  model.computeFaceNormals();
+  model.computeVertexNormals();
+
+  modelMesh = new THREE.Mesh( model, material )
+  group.add(modelMesh);
+
+  // Add color sphere
+  sphereMesh = new THREE.Mesh(sphere, new THREE.MeshBasicMaterial({color: 0xffff00}));
+  group.add(sphereMesh)
+
+  scene.add(group)
+
   updateScene(color)
-
-  geometry.computeFaceNormals();
-  geometry.computeVertexNormals();
-
-  theMesh = new THREE.Mesh( geometry, material )
-  theMesh.rotation.x = 5.2;
-  theMesh.rotation.z = 10.77;
-  scene.add(theMesh);
 }
 
 // Update Scene
 // ---------------------------------------------
 
-function updateColors(color) {
-  var facevars = ['a', 'b', 'c']
-  for(var i = 0; i < geometry.faces.length; i++) {
-    for(var j = 0; j < 3; j++) {
-      var vec = geometry.vertices[geometry.faces[i][facevars[j]]];
-      var rgb = HSVtoRGB(
-        (360 - degrees(Math.atan2(vec.y, vec.x)) + color.hue + circle.start) / 360,
-        Math.sqrt(vec.x * vec.x + vec.y * vec.y) / 100,
-        vec.z / 100
-      )
-      geometry.faces[i].vertexColors[j].setRGB(rgb[0], rgb[1], rgb[2])
-    }
-  }
-  geometry.colorsNeedUpdate = true;
-}
-
 function updateScene(color) {
+
+  // Check whether it updated
+  var rgb = HSVtoRGB(color.hue / 360, color.saturation / 100, color.brightness / 100);
+  sphereMesh.material.color.setRGB(rgb[0], rgb[1], rgb[2]);
+  sphereMesh.position.x = color.saturation;
+  sphereMesh.position.z = color.brightness;
+
+  // if hue changed, change the model vector colors
+  // making it appear like the model rotated.
   if(color.hueChanged) {
-    updateColors(color);
+    var facevars = ['a', 'b', 'c']
+    for(var i = 0; i < model.faces.length; i++) {
+      for(var j = 0; j < 3; j++) {
+        var vec = model.vertices[model.faces[i][facevars[j]]];
+        var rgb = HSVtoRGB(
+          (360 - degrees(Math.atan2(vec.y, vec.x)) + color.hue + circle.start) / 360,
+          Math.sqrt(vec.x * vec.x + vec.y * vec.y) / 100,
+          vec.z / 100
+        )
+        model.faces[i].vertexColors[j].setRGB(rgb[0], rgb[1], rgb[2])
+      }
+    }
+    model.colorsNeedUpdate = true;
     color.hueChanged = false;
   }
-}
-
-function changeColor(h, s, v) {
-  color.hueChanged = h != color.hue;
-  color.hue = h;
-  color.saturation = s;
-  color.brightness = v;
 }
 
 // Go baby go
@@ -188,12 +196,24 @@ var render = function () {
   stats.end();
 };
 
-document.body.onmousemove = function(e){
-  changeColor(e.pageX % 360, 100, 100);
-  // theMesh.rotation.z = e.pageX / 100;
-	// theMesh.rotation.x = e.pageY / 100;
-  // console.log(theMesh.rotation)
+var ranges = document.querySelectorAll("input[type=range]");
+for(var i = 0; i < ranges.length; i++) {
+  ranges[i].addEventListener('input', function(e) {
+    var dimension = e.target.name;
+    var value = parseInt(e.target.value);
+    color[dimension] = value;
+    if(dimension == 'hue') {
+      color.hueChanged = true;
+    }
+  })
 }
+
+//document.body.onmousemove = function(e){
+  // changeColor(e.pageX % 360, 100, 100);
+  // modelMesh.rotation.z = e.pageX / 50;
+	// modelMesh.rotation.x = e.pageY / 50;
+  // console.log(modelMesh.rotation)
+//}
 
 initScene();
 render();
