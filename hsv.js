@@ -2,9 +2,10 @@ var scene = new THREE.Scene();
 var group = new THREE.Object3D();
 var model = new THREE.Geometry();
 var sphere = new THREE.SphereGeometry(7, 32, 32);
+var ring = new THREE.RingGeometry(8, 7, 32);
 var renderer = new THREE.WebGLRenderer({ antialias: true });
 var camera = new THREE.PerspectiveCamera(38, 600/400, 0.1, 1000);
-var modelMesh, sphereMesh;
+var modelMesh, sphereMesh, ringMesh;
 var rotate = true;
 renderer.setSize(600, 400);
 document.getElementById('container').appendChild(renderer.domElement);
@@ -144,8 +145,18 @@ function initScene() {
 
   modelMesh = new THREE.Mesh(model, material);
   group.add(modelMesh);
+
   sphereMesh = new THREE.Mesh(sphere, new THREE.MeshBasicMaterial({color: 0xffff00}));
+  sphereMesh.position.y = 2;
   group.add(sphereMesh)
+
+  ringMesh = new THREE.Mesh(ring, new THREE.MeshBasicMaterial({color: 0xFFFFFF}));
+  ringMesh.material.opacity = 0.2;
+  ringMesh.material.transparent = true;
+  ringMesh.rotation.x = Math.PI/2;
+  ringMesh.position.y = 1;
+  group.add(ringMesh)
+
   scene.add(group)
 
   updateScene(color)
@@ -156,12 +167,12 @@ function initScene() {
 
 function updateScene(color) {
 
-  // Check whether it updated
   var rgb = HSVtoRGB(color.hue / 360, color.saturation / 100, color.brightness / 100);
   sphereMesh.material.color.setRGB(rgb[0], rgb[1], rgb[2]);
   sphereMesh.position.x = color.saturation;
   sphereMesh.position.z = -color.brightness;
-  // sphereMesh.position.x = 50;
+  ringMesh.position.x = color.saturation;
+  ringMesh.position.z = -color.brightness;
 
   // if hue changed, change the model vector colors
   // making it appear like the model rotated.
