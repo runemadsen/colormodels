@@ -6,7 +6,7 @@ var ring = new THREE.RingGeometry(8, 7, 32);
 var renderer = new THREE.WebGLRenderer({ antialias: true });
 var camera = new THREE.PerspectiveCamera(38, 600/400, 0.1, 1000);
 var modelMesh, sphereMesh, ringMesh;
-var rotate = true;
+var hsl = true;
 renderer.setSize(600, 400);
 document.getElementById('container').appendChild(renderer.domElement);
 
@@ -167,8 +167,13 @@ function initScene() {
 
 function updateScene(color) {
 
-  var rgb = HSVtoRGB(color.hue / 360, color.saturation / 100, color.brightness / 100);
-  sphereMesh.material.color.setRGB(rgb[0], rgb[1], rgb[2]);
+  if(hsl) {
+    sphereMesh.material.color.setHSL(color.hue / 360, color.saturation / 100, color.brightness / 100)
+  } else {
+    var rgb = HSVtoRGB(color.hue / 360, color.saturation / 100, color.brightness / 100);
+    sphereMesh.material.color.setRGB(rgb[0], rgb[1], rgb[2]);
+  }
+
   sphereMesh.position.x = color.saturation;
   sphereMesh.position.z = -color.brightness;
   ringMesh.position.x = color.saturation;
@@ -177,16 +182,21 @@ function updateScene(color) {
   // if hue changed, change the model vector colors
   // making it appear like the model rotated.
   if(color.hueChanged) {
-    var facevars = ['a', 'b', 'c']
+    var facevars = ['a', 'b', 'c'];
+    var h, s, b;
     for(var i = 0; i < model.faces.length; i++) {
       for(var j = 0; j < 3; j++) {
         var vec = model.vertices[model.faces[i][facevars[j]]];
-        var rgb = HSVtoRGB(
-          (360 - degrees(Math.atan2(vec.y, vec.x)) + color.hue) / 360,
-          Math.sqrt(vec.x * vec.x + vec.y * vec.y) / 100,
-          Math.abs(vec.z) / 100
-        )
-        model.faces[i].vertexColors[j].setRGB(rgb[0], rgb[1], rgb[2])
+        h = (360 - degrees(Math.atan2(vec.y, vec.x)) + color.hue) / 360;
+        s = Math.sqrt(vec.x * vec.x + vec.y * vec.y) / 100;
+        b = Math.abs(vec.z) / 100;
+        if(hsl) {
+          model.faces[i].vertexColors[j].setHSL(h, s, b);
+        }
+        else {
+          var rgb = HSVtoRGB(h, s, b)
+          model.faces[i].vertexColors[j].setRGB(rgb[0], rgb[1], rgb[2])
+        }
       }
     }
     model.colorsNeedUpdate = true;
@@ -217,17 +227,8 @@ for(var i = 0; i < ranges.length; i++) {
   })
 }
 
-document.body.onmousemove = function(e){
-  // changeColor(e.pageX % 360, 100, 100);
-  // if(rotate) {
-  //   group.rotation.z = e.pageX / 50;
-  // 	group.rotation.x = e.pageY / 50;
-  //   console.log(group.rotation)
-  // }
-}
-
-document.getElementById('container').onclick = function(e) {
-  rotate = !rotate;
+document.getElementById('container').onmousemove = function(e) {
+  group.rotation.z = e.pageX / 100;
 }
 
 initScene();
