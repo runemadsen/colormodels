@@ -26,17 +26,12 @@ var color = {
 
 var circle = {
   start: 110,
-  end: 360,
-  resolution: 4,
+  hueResolution: 40,
+  restResolution: 20
 }
 
-// cache sin and cos value for reuse
-var xs = [];
-var ys = [];
-for(var i = 0; i < 361; i++) {
-  xs[i] = Math.cos(radians(i))
-  ys[i] = Math.sin(radians(i))
-}
+circle.hueStep = (360 - circle.start) / circle.hueResolution;
+circle.restStep = 100 / circle.restResolution
 
 // Helpers
 // ---------------------------------------------
@@ -76,17 +71,19 @@ function Vec3WithCol(x, y, z, h, s) {
 
 function makeZPlane(x1, y1, h1, s1, x2, y2, h2, s2) {
 
-  for(var j = 0; j > -100; j -= circle.resolution) {
+  for(var j = 0; j > -100; j -= circle.restStep) {
+
+    var next = j - circle.restStep;
 
     model.vertices.push(
       Vec3WithCol(x1, y1, j, h1, s1),
       Vec3WithCol(x2, y2, j, h2, s2),
-      Vec3WithCol(x2, y2, j - circle.resolution, h2, s2)
+      Vec3WithCol(x2, y2, next, h2, s2)
     )
 
     model.vertices.push(
-      Vec3WithCol(x2, y2, j - circle.resolution, h2, s2),
-      Vec3WithCol(x1, y1, j - circle.resolution, h1, s1),
+      Vec3WithCol(x2, y2, next, h2, s2),
+      Vec3WithCol(x1, y1, next, h1, s1),
       Vec3WithCol(x1, y1, j, h1, s1)
     )
 
@@ -99,7 +96,7 @@ function makeZPlane(x1, y1, h1, s1, x2, y2, h2, s2) {
 function initScene() {
 
   group.rotation.x = 8.34;
-  group.rotation.z = 6.36;
+  group.rotation.z = 6.57;
 
   scene.background = new THREE.Color(0x222222);
   camera.position.z = 330;
@@ -110,50 +107,35 @@ function initScene() {
 
   var material = new THREE.MeshBasicMaterial({ vertexColors: THREE.VertexColors });
 
-  var a1, a2, x1, y1, x2, y2;
-  for(var i = circle.start; i < circle.end; i += circle.resolution) {
+  var next, x1, y1, x2, y2;
+  for(var i = circle.start; i < 360; i += circle.hueStep) {
 
-    a1 = i % 360;
-    a2 = (i + circle.resolution) % 360;
-    x1 = xs[a1] * 100;
-    y1 = ys[a1] * 100;
-    x2 = xs[a2] * 100;
-    y2 = ys[a2] * 100;
+    next = i + circle.hueStep;
+
+    x1 = Math.cos(radians(i)) * 100;
+    y1 = Math.sin(radians(i)) * 100;
+    x2 = Math.cos(radians(next)) * 100;
+    y2 = Math.sin(radians(next)) * 100;
 
     // circle slice
     model.vertices.push(
-      Vec3WithCol(0, 0, -100, a1, 0),
-      Vec3WithCol(x2, y2, -100, a2, 100),
-      Vec3WithCol(x1, y1, -100, a1, 100)
+      Vec3WithCol(0, 0, -100, i, 0),
+      Vec3WithCol(x2, y2, -100, next, 100),
+      Vec3WithCol(x1, y1, -100, i, 100)
     )
 
-
-    makeZPlane(x2, y2, a2, 100, x1, y1, a1, 100)
+    makeZPlane(x2, y2, next, 100, x1, y1, i, 100)
   }
 
-  for(var i = 0; i < 100; i += circle.resolution) {
-    // Start plane
-    makeZPlane(
-      xs[circle.start] * (i + circle.resolution),
-      ys[circle.start] * (i + circle.resolution),
-      circle.start,
-      i + circle.resolution,
-      xs[circle.start] * i,
-      ys[circle.start] * i,
-      circle.start,
-      i
-    )
-    // End plane
-    makeZPlane(
-      xs[circle.end] * i,
-      ys[circle.end] * i,
-      circle.end,
-      i,
-      xs[circle.end] * (i + circle.resolution),
-      ys[circle.end] * (i + circle.resolution),
-      circle.end,
-      i + circle.resolution
-    )
+  // Make the two end planes
+  var x1 = Math.cos(radians(circle.start));
+  var y1 = Math.sin(radians(circle.start));
+  var x2 = Math.cos(radians(360));
+  var y2 = Math.sin(radians(360));
+  for(var i = 0; i < 100; i += circle.restStep) {
+    var next = i + circle.restStep;
+    makeZPlane(x1 * next, y1 * next, circle.start, next, x1 * i, y1 * i, circle.start, i )
+    makeZPlane(x2 * i, y2 * i, 360, i, x2 * next, y2 * next, 360, next)
   }
 
   for(var i = 0; i < model.vertices.length - 2; i += 3) {
