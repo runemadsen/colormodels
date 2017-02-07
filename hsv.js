@@ -6,7 +6,7 @@ var ring = new THREE.RingGeometry(8, 7, 32);
 var renderer = new THREE.WebGLRenderer({ antialias: true });
 var camera = new THREE.PerspectiveCamera(38, 600/400, 0.1, 1000);
 var modelMesh, sphereMesh, ringMesh;
-var hsl = true;
+var hsl = false;
 renderer.setSize(600, 400);
 document.getElementById('container').appendChild(renderer.domElement);
 
@@ -67,18 +67,27 @@ function radians(angle) {
   return angle * (Math.PI / 180);
 }
 
-function makePlane(x1, y1, x2, y2, flip) {
+function makeZPlane(x1, y1, a1, x2, y2, a2) {
+  var v1, v2, v3;
   for(var j = 0; j > -100; j -= circle.resolution) {
-    model.vertices.push(
-      new Vec3(x1, y1, j),
-      flip ? new Vec3(x2, y2, j - circle.resolution) : new Vec3(x2, y2, j),
-      flip ? new Vec3(x2, y2, j) : new Vec3(x2, y2, j - circle.resolution)
-    );
-    model.vertices.push(
-      new Vec3(x2, y2, j - circle.resolution),
-      flip ? new Vec3(x1, y1, j) : new Vec3(x1, y1, j - circle.resolution),
-      flip ? new Vec3(x1, y1, j - circle.resolution) : new Vec3(x1, y1, j)
-    );
+
+    // criss
+    v1 = new Vec3(x1, y1, j);
+    v1.hue = a1;
+    v2 = new Vec3(x2, y2, j);
+    v2.hue = a2;
+    v3 = new Vec3(x2, y2, j - circle.resolution);
+    v3.hue = a2;
+    model.vertices.push(v1, v2, v3);
+
+    // cross
+    v1 = new Vec3(x2, y2, j - circle.resolution);
+    v1.hue = a2;
+    v2 = new Vec3(x1, y1, j - circle.resolution);
+    v2.hue = a1;
+    v3 = new Vec3(x1, y1, j);
+    v3.hue = a1;
+    model.vertices.push(v1, v2, v3);
   }
 }
 
@@ -99,7 +108,7 @@ function initScene() {
 
   var material = new THREE.MeshBasicMaterial({ vertexColors: THREE.VertexColors });
 
-  var a1, a2, x1, y1, x2, y2;
+  var a1, a2, x1, y1, x2, y2, v1, v2, v3;
   for(var i = circle.start; i < circle.end; i += circle.resolution) {
 
     a1 = i % 360;
@@ -109,28 +118,38 @@ function initScene() {
     x2 = xs[a2] * 100;
     y2 = ys[a2] * 100;
 
+    v1 = new Vec3(0, 0, -100);
+    v1.hue = a1;
+    v2 = new Vec3(x2, y2, -100);
+    v2.hue = a2;
+    v3 = new Vec3(x1, y1, -100);
+    v3.hue = a1;
+
     // circle slice
-    model.vertices.push(new Vec3(0, 0, -100), new Vec3(x2, y2, -100), new Vec3(x1, y1, -100))
+    model.vertices.push(v1, v2, v3)
 
     // slice plan down z axis
-    makePlane(x1, y1, x2, y2, true)
+    makeZPlane(x2, y2, a2, x1, y1, a1)
   }
 
   for(var i = 0; i < 100; i += circle.resolution) {
     // Start plane
-    makePlane(
-      xs[circle.start] * i,
-      ys[circle.start] * i,
+    makeZPlane(
       xs[circle.start] * (i + circle.resolution),
       ys[circle.start] * (i + circle.resolution),
-      true
+      circle.start,
+      xs[circle.start] * i,
+      ys[circle.start] * i,
+      circle.start
     )
     // End plane
-    makePlane(
+    makeZPlane(
       xs[circle.end] * i,
       ys[circle.end] * i,
+      circle.end,
       xs[circle.end] * (i + circle.resolution),
-      ys[circle.end] * (i + circle.resolution)
+      ys[circle.end] * (i + circle.resolution),
+      circle.end
     )
   }
 
@@ -187,7 +206,7 @@ function updateScene(color) {
     for(var i = 0; i < model.faces.length; i++) {
       for(var j = 0; j < 3; j++) {
         var vec = model.vertices[model.faces[i][facevars[j]]];
-        h = (360 - degrees(Math.atan2(vec.y, vec.x)) + color.hue) / 360;
+        h = (vec.hue + color.hue) / 360;
         s = Math.sqrt(vec.x * vec.x + vec.y * vec.y) / 100;
         b = Math.abs(vec.z) / 100;
         if(hsl) {
