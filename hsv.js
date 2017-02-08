@@ -102,9 +102,6 @@ function initScene() {
   camera.position.z = 330;
   camera.position.y = 30;
 
-  var light = new THREE.AmbientLight(0xFFFFFF)
-  scene.add(light);
-
   var material = new THREE.MeshBasicMaterial({ vertexColors: THREE.VertexColors });
 
   var next, x1, y1, x2, y2;
