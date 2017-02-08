@@ -6,7 +6,7 @@ var ring = new THREE.RingGeometry(8, 7, 32);
 var renderer = new THREE.WebGLRenderer({ antialias: true });
 var camera = new THREE.PerspectiveCamera(38, 600/400, 0.1, 1000);
 var modelMesh, sphereMesh, ringMesh;
-var hsl = false;
+var hsl = true;
 renderer.setSize(600, 400);
 document.getElementById('container').appendChild(renderer.domElement);
 
